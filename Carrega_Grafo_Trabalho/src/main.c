@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #define NUM_VERTICES 150
@@ -18,8 +19,11 @@ void carregar_dados(DadosIris *dados, const char *nome_arquivo);
 double calcular_distancia_euclidiana(DadosIris v1, DadosIris v2);
 void calcular_todas_distancias_euclidianas(DadosIris *dados, double matriz_de[NUM_VERTICES][NUM_VERTICES]);
 void normalizar_distancias(double matriz_de[NUM_VERTICES][NUM_VERTICES], double matriz_den[NUM_VERTICES][NUM_VERTICES]);
-void construir_grafo(double matriz_den[NUM_VERTICES][NUM_VERTICES], int matriz_adj[NUM_VERTICES][NUM_VERTICES]);
+void construir_grafo(double matriz_de[NUM_VERTICES][NUM_VERTICES], int matriz_adj[NUM_VERTICES][NUM_VERTICES]);
 void imprimir_matriz_adjacencias(int matriz_adj[NUM_VERTICES][NUM_VERTICES]);
+void salvar_coordenadas_vertices(DadosIris dados[NUM_VERTICES], const char* nome_arquivo);
+void salvar_matriz_adj(int matriz_adj[NUM_VERTICES][NUM_VERTICES], const char* nome_arquivo);
+void normalizar_coordenadas(DadosIris dados[NUM_VERTICES]);
 
 int main() {
     DadosIris dados_iris[NUM_VERTICES];
@@ -47,6 +51,10 @@ int main() {
         }
         printf("\n");
     }
+
+    normalizar_coordenadas(dados_iris);
+
+    salvar_coordenadas_vertices(dados_iris, "coordenadas_vertices.csv");
 
     salvar_matriz_adj(matriz_adjacencias, "grafo_adjacencias.csv");
 
@@ -122,18 +130,36 @@ void normalizar_distancias(double matriz_de[NUM_VERTICES][NUM_VERTICES], double 
     }
 }
 
-void construir_grafo(double matriz_den[NUM_VERTICES][NUM_VERTICES], int matriz_adj[NUM_VERTICES][NUM_VERTICES]) {
+// Função para construir a matriz de adjacências
+void construir_grafo(double matriz_de[NUM_VERTICES][NUM_VERTICES], int matriz_adj[NUM_VERTICES][NUM_VERTICES]) {
     for (int i = 0; i < NUM_VERTICES; i++) {
         for (int j = 0; j < NUM_VERTICES; j++) {
             if (i == j) {
                 matriz_adj[i][j] = 0;
-            } else if (matriz_den[i][j] <= 0.3) {
+            } else if (matriz_de[i][j] <= 0.06) { // <-- Mude este valor para 0.1 ou menor
                 matriz_adj[i][j] = 1;
             } else {
-                matriz_adj[i][j] = 0;
+                matriz_adj[i][j] = 0; 
             }
         }
     }
+}
+
+// Função para salvar as coordenadas dos vértices em um arquivo CSV
+void salvar_coordenadas_vertices(DadosIris dados[NUM_VERTICES], const char* nome_arquivo) {
+    FILE* arquivo = fopen(nome_arquivo, "w");
+    if (!arquivo) {
+        perror("Erro ao salvar o arquivo de coordenadas");
+        return;
+    }
+
+    for (int i = 0; i < NUM_VERTICES; i++) {
+        fprintf(arquivo, "%.4f,%.4f,%.4f\n", 
+                dados[i].comprimento_sepala,
+                dados[i].largura_sepala,
+                dados[i].comprimento_petala);
+    }
+    fclose(arquivo);
 }
 
 // Exemplo de função em C para salvar a matriz
@@ -149,9 +175,34 @@ void salvar_matriz_adj(int matriz_adj[NUM_VERTICES][NUM_VERTICES], const char* n
             fprintf(arquivo, "%d", matriz_adj[i][j]);
             if (j < NUM_VERTICES - 1) {
                 fprintf(arquivo, ",");
-            }
+            } 
         }
         fprintf(arquivo, "\n");
     }
     fclose(arquivo);
+}
+
+void normalizar_coordenadas(DadosIris dados[NUM_VERTICES]) {
+    double min_sepala_comp = INFINITY, max_sepala_comp = -INFINITY;
+    double min_sepala_larg = INFINITY, max_sepala_larg = -INFINITY;
+    double min_petala_comp = INFINITY, max_petala_comp = -INFINITY;
+
+    // Encontrar min e max
+    for (int i = 0; i < NUM_VERTICES; i++) {
+        if (dados[i].comprimento_sepala < min_sepala_comp) min_sepala_comp = dados[i].comprimento_sepala;
+        if (dados[i].comprimento_sepala > max_sepala_comp) max_sepala_comp = dados[i].comprimento_sepala;
+
+        if (dados[i].largura_sepala < min_sepala_larg) min_sepala_larg = dados[i].largura_sepala;
+        if (dados[i].largura_sepala > max_sepala_larg) max_sepala_larg = dados[i].largura_sepala;
+
+        if (dados[i].comprimento_petala < min_petala_comp) min_petala_comp = dados[i].comprimento_petala;
+        if (dados[i].comprimento_petala > max_petala_comp) max_petala_comp = dados[i].comprimento_petala;
+    }
+
+    // Normalizar para [0,1]
+    for (int i = 0; i < NUM_VERTICES; i++) {
+        dados[i].comprimento_sepala = (dados[i].comprimento_sepala - min_sepala_comp) / (max_sepala_comp - min_sepala_comp);
+        dados[i].largura_sepala = (dados[i].largura_sepala - min_sepala_larg) / (max_sepala_larg - min_sepala_larg);
+        dados[i].comprimento_petala = (dados[i].comprimento_petala - min_petala_comp) / (max_petala_comp - min_petala_comp);
+    }
 }
